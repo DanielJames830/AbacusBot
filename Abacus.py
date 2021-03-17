@@ -258,6 +258,8 @@ async def add(ctx, name=None, xp=None, focus=None):
 
         char = FindCharacter(name, ctx.guild)
 
+        i = CheckLevel(char.xp, focus)
+
         if focus == None:
             char.xp += int(xp)
             await ctx.send(f'Added {xp} xp to {char.name}.')
@@ -270,7 +272,18 @@ async def add(ctx, name=None, xp=None, focus=None):
                 char.focuses.update({focus:xp})
             await ctx.send(f'Added {xp} xp to {focus} in {char.name}.')
 
+
         ExportCharacter(char, ctx.guild)
+
+        if focus == None:
+            x = math.floor(CheckLevel(FindCharacter(name, ctx.guild).xp, focus))
+        else:
+            x = math.floor(CheckLevel(FindCharacter(name, ctx.guild).focuses[focus], focus))
+        if  x != i:
+            if focus != None:
+                await ctx.send(f'{name} just leveled up to level {x} in {focus}!.')
+            else:
+                await ctx.send(f'{name} just leveled up to level {x}!.')
 
  #Set xp to value
 @client.command(help=helpInfo[4], brief=helpInfo[5])
