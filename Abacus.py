@@ -164,12 +164,13 @@ def CreateImage(char=None, focus=None):
         percent = (int(char.focuses[focus])/needed) * 100
 
     #Sets length of progress bar
+    rectangle = Image.open('Images/progress.png').resize(size)
+    shadow = Image.open('Images/shadow.png').resize((size[0] + 15, size[1]))
     size = (round(rectangle.size[0] * percent / 100), rectangle.size[1])
 
     if size[0] == 0:
         size = (1, rectangle.size[1])
-    rectangle = Image.open('Images/progress.png').resize(size)
-    shadow = Image.open('Images/shadow.png').resize((size[0] + 15, size[1]))
+
 
     #Pastes images togethor
     frame=Image.open('Images/frame.png')
