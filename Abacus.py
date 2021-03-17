@@ -16,7 +16,9 @@ helpInfo = open('help.txt', 'r').readlines()
 class Character:
     name = "John Doe"
     xp = 0
-    focuses = {}
+    focuses = {
+        'Name': 0
+    }
     image = None
 
     def Builder(data):
@@ -103,7 +105,7 @@ async def VerifyCommand(ctx, name=None, xp=None, focus=None):
         await ctx.send('Please specify a character')
         return False
 
-    char = FindCharacter(name)
+    char = FindCharacter(name, ctx.guild)
     if char == None:
         await ctx.send(f'There is no character by the name of {name}!')
         return False
@@ -164,12 +166,16 @@ def CreateImage(char=None, focus=None):
         percent = (int(char.focuses[focus])/needed) * 100
 
     #Sets length of progress bar
-    rectangle = Image.open('Images/progress.png').resize(size)
-    shadow = Image.open('Images/shadow.png').resize((size[0] + 15, size[1]))
+    rectangle = Image.open('Images/progress.png')
+    shadow = Image.open('Images/shadow.png')
+
     size = (round(rectangle.size[0] * percent / 100), rectangle.size[1])
 
     if size[0] == 0:
         size = (1, rectangle.size[1])
+
+    rectangle = rectangle.resize(size)
+    shadow = shadow.resize((size[0] + 15, size[1]))
 
 
     #Pastes images togethor
@@ -182,7 +188,7 @@ def CreateImage(char=None, focus=None):
     backgound.paste(frame, (0,0), frame)
 
     #Time for some text!
-    largeFont = ImageFont.truetype('Fonts/bahnschrift.tff', 40)
+    largeFont = ImageFont.truetype('Fonts/bahnschrift.ttf', 40)
     smallFont = ImageFont.truetype('Fonts/bahnschrift.ttf', 20)
 
     nameplate = ImageDraw.Draw(backgound)
@@ -264,7 +270,7 @@ async def add(ctx, name=None, xp=None, focus=None):
                 char.focuses.update({focus:xp})
             await ctx.send(f'Added {xp} xp to {focus} in {char.name}.')
 
-        ExportCharacter(char)
+        ExportCharacter(char, ctx.guild)
 
  #Set xp to value
 @client.command(help=helpInfo[4], brief=helpInfo[5])
@@ -283,7 +289,7 @@ async def set(ctx, name=None, xp=None, focus=None):
 
             await ctx.send(f"Set {char.name}'s xp for {focus} to {xp}.")
 
-    ExportCharacter(char)
+    ExportCharacter(char, ctx.guild)
 
 @client.command(help=helpInfo[6], brief=helpInfo[7])
 async def level(ctx, name=None, focus=None):
