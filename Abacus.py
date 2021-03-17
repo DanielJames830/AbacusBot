@@ -249,7 +249,7 @@ async def add(ctx, name=None, xp=None, focus=None):
 
     if await VerifyCommand(ctx, name, xp, focus) == True:
 
-        char = FindCharacter(name)
+        char = FindCharacter(name, ctx.guild)
 
         if focus == None:
             char.xp += int(xp)
@@ -270,7 +270,7 @@ async def add(ctx, name=None, xp=None, focus=None):
 async def set(ctx, name=None, xp=None, focus=None):
     if await VerifyCommand(ctx, name, xp, focus) == True:
 
-        char = FindCharacter(name)
+        char = FindCharacter(name, ctx.guild)
         if focus == None:
             char.xp = int(xp)
             await ctx.send(f"Set {char.name}'s xp to {xp}.")
@@ -290,7 +290,7 @@ async def level(ctx, name=None, focus=None):
         await ctx.send('Please specify a character and/or focus')
         return
 
-    char = FindCharacter(name)
+    char = FindCharacter(name, ctx.guild)
     if char == None:
         await ctx.send(f"No character by the name of {name} exists!")
         return
