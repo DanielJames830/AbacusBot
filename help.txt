@@ -1,0 +1,8 @@
+Creates a new file for the character specified. Send an image as an attachment for a profile picture. (Image must be an attachment, not a link.)
+Creates new character.
+Adds xp to a character or a focus. Leave the focus field blank to add to the overall level.
+Adds xp to the character.
+Sets the xp of a character or focus to amount specified. Leave the focus field blank to add to the overall level.
+Sets amount of xp.
+Prints the current level of the character or focus specified. Leave the focus field blank to print the overall level.
+Displays character levels.
