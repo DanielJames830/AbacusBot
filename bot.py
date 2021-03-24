@@ -1,4 +1,3 @@
-#Dependencies___________________________________________________________________
 import discord
 import os
 import json
@@ -9,12 +8,12 @@ from pathlib import Path
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 
+
 client = commands.Bot(command_prefix = '.')
-helpInfo = open('help.txt', 'r').readlines()
 
 #Classes________________________________________________________________________
 class Character:
-    name = "John Doe"
+    name = "John"
     xp = 0
     focuses = {
         'Name': 0
@@ -29,40 +28,43 @@ class Character:
         char.image = data.get('image')
         return char
 
+class Formula:
+    def __init__(self):
+        self._formula = open('Formulas/formula.txt', 'r').read()
+        self._focusformula = open('Formulas/focusformula.txt', 'r').read()
+
+    def get_formula(self):
+        return self._formula
+
+    def set_formula(self, a):
+         self._formula = a
+
+    def del_formula(self):
+         del self._formula
+
+    formula = property(get_formula, set_formula, del_formula)
+
+    def get_focusformula(self):
+        return self._focusformula
+
+    def set_focusformula(self, a):
+         self._focusformula = a
+
+    def del_focusformula(self):
+         del self._focusformula
+
+    focusformula = property(get_focusformula, set_focusformula, del_focusformula)
+
 #Events_________________________________________________________________________
 @client.event
 async def on_ready():
     print("I've awoken.")
 
-@client.event
-async def on_guild_join(guild):
-    for channel in guild.text_channels:
-        if channel.permissions_for(guild.me).send_messages:
-            #Creates folder to store data in
-            InitDirectory(guild)
-            await channel.send('I have arrived!')
-        break
-
 #Functions______________________________________________________________________
-def InitDirectory(guild):
-    mode = 0o666
-    folder = guild.name
-    parent = 'Servers/'
-    path = os.path.join(parent, folder)
-    os.mkdir(path, mode)
-
-    subFolder = 'Characters'
-    parent = f'Servers/{guild.name}/'
-    path = os.path.join(parent, subFolder)
-    os.mkdir(path, mode)
-
-def ConstructPath(guild):
-    return f'Servers/{guild.name}/Characters/'
-
-def ExportCharacter(char, guild):
-
-    output = Path(f'{ConstructPath(guild)}{char.name}.txt')
-    f = open(output, 'w')
+def ExportCharacter(char):
+    print(f'Exporting {char.name}.')
+    file = Path(f'Characters/{char.name}.txt')
+    f = open(file, 'w')
 
     data = {
     "name": char.name,
@@ -73,22 +75,30 @@ def ExportCharacter(char, guild):
 
     f.writelines(json.dumps(data))
     f.close()
+    print(f'Exporting succeeded.')
 
-def FindCharacter(name, guild):
-    file = Path(f'{ConstructPath(guild)}{name}.txt')
+def FindCharacter(name):
+    print(f'Searching for {name}.')
+    file = Path(f'Characters/{name}.txt')
 
     if os.path.isfile(file):
         f = open(file, 'r')
         data = json.load(f)
         char = Character.Builder(data)
+        print(f'Found {name}.')
         return char
     else:
+        print(f'Could not find {name}.')
         return None
 
 def CheckLevel(xp, focus=None):
+    print(f"Calculating level.....")
     x = int(xp)
     if focus == None:
-        return ((math.sqrt(x))/20) + 1
+        f = Formula()
+        code = parser.expr(f.formula).compile()
+        x = xp
+        return eval(code)
     else:
         if x < 10:
             return 0
@@ -105,7 +115,7 @@ async def VerifyCommand(ctx, name=None, xp=None, focus=None):
         await ctx.send('Please specify a character')
         return False
 
-    char = FindCharacter(name, ctx.guild)
+    char = FindCharacter(name)
     if char == None:
         await ctx.send(f'There is no character by the name of {name}!')
         return False
@@ -132,25 +142,31 @@ async def VerifyCommand(ctx, name=None, xp=None, focus=None):
     return True
 
 def CreateImage(char=None, focus=None):
+    print(f"Generating {char.name}'s card.")
     backgound = Image.open('Images/card.png')
 
-    #Checks if character include a portrait
+    print(f"Checking for image.")
     if char.image == None:
+        print(f"No image found.")
         icon = Image.open('Images/NoImage.png').convert("RGBA")
     else:
+        print(f"Image found!")
         f = requests.get(char.image, allow_redirects=True)
         open('tmp/image.png', 'wb').write(f.content)
         icon = Image.open('tmp/image.png').convert("RGBA")
 
-    #Scales portrait to fit frame
+    print(f"Scaling image.")
     if icon.size[0] > icon.size[1]:
         size=(round(icon.size[0] * 160/icon.size[1]), 160)
+
     else:
         size=(160, round(icon.size[1] * 160/icon.size[0]))
     icon = icon.resize(size)
 
+    rectangle = Image.open('Images/progress.png')
+    shadow = Image.open('Images/Shadow.png')
 
-    #Checks for focus argument
+    print(f"Checking level progress.")
     if focus == None:
         y = math.floor((CheckLevel(char.xp) + 1))
         needed = ((20*y) - 20)**2
@@ -165,9 +181,6 @@ def CreateImage(char=None, focus=None):
             needed = 130
         percent = (int(char.focuses[focus])/needed) * 100
 
-    #Sets length of progress bar
-    rectangle = Image.open('Images/progress.png')
-    shadow = Image.open('Images/shadow.png')
 
     size = (round(rectangle.size[0] * percent / 100), rectangle.size[1])
 
@@ -177,8 +190,7 @@ def CreateImage(char=None, focus=None):
     rectangle = rectangle.resize(size)
     shadow = shadow.resize((size[0] + 15, size[1]))
 
-
-    #Pastes images togethor
+    print(f"Formatting text.")
     frame=Image.open('Images/frame.png')
     card2 = Image.open('Images/card2.png')
     backgound.paste(icon, (40,40), icon)
@@ -187,9 +199,8 @@ def CreateImage(char=None, focus=None):
     backgound.paste(rectangle, (240,160), rectangle)
     backgound.paste(frame, (0,0), frame)
 
-    #Time for some text!
-    largeFont = ImageFont.truetype('Fonts/bahnschrift.ttf', 40)
-    smallFont = ImageFont.truetype('Fonts/bahnschrift.ttf', 20)
+    largeFont = ImageFont.truetype('C:/Windows/Fonts/Bahnschrift.ttf', 40)
+    smallFont = ImageFont.truetype('C:/Windows/Fonts/Bahnschrift.ttf', 20)
 
     nameplate = ImageDraw.Draw(backgound)
     xpneeded = ImageDraw.Draw(backgound)
@@ -198,141 +209,116 @@ def CreateImage(char=None, focus=None):
     if focus == None:
         text = f'{char.name}:'
         subtext = f'Character Level'
-
-        xpneeded.text((920,135), f'{char.xp}/{needed} XP',
-        font=smallFont, align='right', fill=(93,93,93), anchor="ra")
-
-        level.text((960,16), f'Level: #{math.floor(CheckLevel(char.xp))}',
-        font=largeFont, align='right', fill=(255,255,255), anchor="ra")
-
+        xpneeded.text((920,135), f'{char.xp}/{needed} XP', font=smallFont, align='right', fill=(93,93,93), anchor="ra")
+        level.text((960,16), f'Level: #{math.floor(CheckLevel(char.xp))}', font=largeFont, align='right', fill=(255,255,255), anchor="ra")
     else:
         text = f'{char.name}: {focus}'
         subtext = f'{focus}:'
-        xpneeded.text((920,135), f'{char.focuses[focus]}/{needed} XP',
-        font=smallFont, align='right', fill=(93,93,93), anchor="ra")
-
-        level.text((960,16),
-        f'Level: #{math.floor(CheckLevel(char.focuses[focus], focus))}',
-        font=largeFont, align='right', fill=(255,255,255), anchor="ra")
+        xpneeded.text((920,135), f'{char.focuses[focus]}/{needed} XP', font=smallFont, align='right', fill=(93,93,93), anchor="ra")
+        level.text((960,16), f'Level: #{math.floor(CheckLevel(char.focuses[focus], focus))}', font=largeFont, align='right', fill=(255,255,255), anchor="ra")
 
     nameplate.text((240,90), text, font=largeFont, fill=(255,255,255))
     nameplate.text((240,135), subtext, font=smallFont, fill=(93,93,93))
 
+
+
+
     backgound.save('tmp/card.png')
+    print(f"Image generation succeeded!")
 
 #Commands_______________________________________________________________________
-#Creates new character
-@client.command(help=helpInfo[0], brief=helpInfo[1])
-async def new(ctx, name):
+@client.command                                                                 (help="Creates a new file for the character specified. Send an image as an attachment for a profile picture. (Image must be an attachment, not a link.)", brief="Creates new character.")
+async def new(ctx, name=None): #Create new character
+
+    print(f'\nNew character request by {ctx.author}.')
     if name == None:
         await ctx.send('Please provide a name for your character!')
+        print(f'Aborted character creation.')
         return
 
-    #Checks if character alrady exists
-    if FindCharacter(name, ctx.guild) != None:
-        await ctx.send('There is already a character with this name!')
-        await ctx.send('Would you like to override it?\nY or N')
+    char = Character()
+    char.name = name
 
+    if FindCharacter(char.name) != None:
+        await ctx.send('This character already exists! Would you like to override it?\nY or N')
         msg = await client.wait_for('message', timeout=30)
         if msg.content == 'Y':
             await ctx.send('It has been done...')
         else:
-            await ctx.send('Maybe next time.')
+            print(f'Aborted character creation.')
             return
-
-    #Assigns values to new char instance.
-    char = Character()
-    char.name = name
     if len(ctx.message.attachments) > 0:
         if ctx.message.attachments[0].url.endswith('png') or ctx.message.attachments[0].url.endswith('jpg'):
             char.image = ctx.message.attachments[0].url
 
-    ExportCharacter(char, ctx.guild)
+    ExportCharacter(char)
+    print(f'Sucessfully created character!')
     await ctx.send(f'Sucessfully created {name}!')
 
-#Add xp to character
-@client.command(help=helpInfo[2], brief=helpInfo[3])
-async def add(ctx, name=None, xp=None, focus=None):
-
+@client.command                                                                 (help="Adds xp to a character or a focus. Leave the focus field blank to add to the overall level.", brief="Adds xp to the character.")
+async def add(ctx, name=None, xp=None, focus=None): #Add xp to character
+    print(f'\nAttempting to add xp to {name}.')
     if await VerifyCommand(ctx, name, xp, focus) == True:
 
-        char = FindCharacter(name, ctx.guild)
-
-        i = CheckLevel(char.xp, focus)
+        char = FindCharacter(name)
 
         if focus == None:
             char.xp += int(xp)
             await ctx.send(f'Added {xp} xp to {char.name}.')
+
         else:
             if focus in char.focuses:
                 i = int(char.focuses[focus])
                 i += int(xp)
                 char.focuses[focus] = i
+
             else:
                 char.focuses.update({focus:xp})
             await ctx.send(f'Added {xp} xp to {focus} in {char.name}.')
 
 
-        ExportCharacter(char, ctx.guild)
+        ExportCharacter(char)
 
-        if focus == None:
-            x = math.floor(CheckLevel(FindCharacter(name, ctx.guild).xp, focus))
-        else:
-            x = math.floor(CheckLevel(FindCharacter(name, ctx.guild).focuses[focus], focus))
-        if  x != i:
-            if focus != None:
-                await ctx.send(f'{name} just leveled up to level {x} in {focus}!.')
-            else:
-                await ctx.send(f'{name} just leveled up to level {x}!.')
-
- #Set xp to value
-@client.command(help=helpInfo[4], brief=helpInfo[5])
-async def set(ctx, name=None, xp=None, focus=None):
+@client.command                                                                 (help="Sets the xp of a character or focus to amount specified. Leave the focus field blank to add to the overall level.", brief="Sets amount of xp.")
+async def set(ctx, name=None, xp=None, focus=None): #Set xp to value
+    print(f'\nAttempting to set xp of {name} to {xp}.')
     if await VerifyCommand(ctx, name, xp, focus) == True:
-
-        char = FindCharacter(name, ctx.guild)
+        char = FindCharacter(name)
         if focus == None:
             char.xp = int(xp)
             await ctx.send(f"Set {char.name}'s xp to {xp}.")
+
         else:
             if focus in char.focuses:
                 char.focuses[focus] = xp
+
             else:
                 char.focuses.update({focus:xp})
-
             await ctx.send(f"Set {char.name}'s xp for {focus} to {xp}.")
 
-    ExportCharacter(char, ctx.guild)
+    ExportCharacter(char)
 
-@client.command(help=helpInfo[6], brief=helpInfo[7])
+@client.command                                                                 (help="Prints the current level of the character or focus specified. Leave the focus field blank to print the overall level.", brief="Displays character levels.")
 async def level(ctx, name=None, focus=None):
+    print(f'\nAttempting to generate image.')
     if name == None:
         await ctx.send('Please specify a character and/or focus')
         return
-
-    char = FindCharacter(name, ctx.guild)
-    if char == None:
+    if FindCharacter(name) == None:
         await ctx.send(f"No character by the name of {name} exists!")
         return
 
+    char = FindCharacter(name)
+
     if focus != None:
-        if focus not in char.focuses:
+        if focus in char.focuses:
+            print('Found')
+        else:
             await ctx.send(f"No focus by the name of {focus} exists in {name}!")
             return
 
     CreateImage(char, focus)
     await ctx.send(file = discord.File('tmp/card.png'))
-
-@client.command(help=helpInfo[8], brief=helpInfo[9])
-async def listall(ctx):
-    path = Path(f'{ConstructPath(ctx.guild)}')
-    files = os.listdir(path)
-
-    list = 'Characters:\n'
-    for f in files:
-        char = FindCharacter(f.replace('.txt', ''), ctx.guild)
-        list = list + f'{char.name}: Lvl: {math.floor(CheckLevel(char.xp, None))}\n'
-    await ctx.send(list)
 
 #Random Junk____________________________________________________________________
 client.run('ODE4NTI1MjM4MTM5NTUxNzg0.YEZVCA._zla2E5ANn70JigmwbSCbzjbrqE')

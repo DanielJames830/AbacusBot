@@ -6,3 +6,5 @@ Sets the xp of a character or focus to amount specified. Leave the focus field b
 Sets amount of xp.
 Prints the current level of the character or focus specified. Leave the focus field blank to print the overall level.
 Displays character levels.
+W
+W
