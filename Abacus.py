@@ -16,9 +16,7 @@ helpInfo = open('help.txt', 'r').readlines()
 class Character:
     name = "John Doe"
     xp = 0
-    focuses = {
-        'Name': 0
-    }
+    focuses = {}
     image = None
 
     def Builder(data):
@@ -220,6 +218,115 @@ def CreateImage(char=None, focus=None):
 
     backgound.save('tmp/card.png')
 
+def CreateAllImage(char=None):
+    size = (1000, (110 * len(char.focuses)) + 240)
+    backgound = Image.open('Images/focusbackground.png')
+    backgound = backgound.resize(size)
+
+    if char.image == None:
+        icon = Image.open('Images/NoImage.png').convert("RGBA")
+    else:
+        f = requests.get(char.image, allow_redirects=True)
+        open('tmp/image.png', 'wb').write(f.content)
+        icon = Image.open('tmp/image.png').convert("RGBA")
+
+    #Scales portrait to fit frame
+    if icon.size[0] > icon.size[1]:
+        size=(round(icon.size[0] * 160/icon.size[1]), 160)
+    else:
+        size=(160, round(icon.size[1] * 160/icon.size[0]))
+    icon = icon.resize(size)
+
+    frame = Image.open('Images/playerplate.png')
+
+    y = math.floor((CheckLevel(char.xp) + 1))
+    needed = ((20*y) - 20)**2
+    percent = (char.xp/needed) * 100
+    rectangle = Image.open('Images/progress.png')
+    shadow = Image.open('Images/shadow.png')
+    card2 = Image.open('Images/card2.png')
+    size = (round(rectangle.size[0] * percent / 100), rectangle.size[1])
+    if size[0] == 0:
+        size = (1, rectangle.size[1])
+    rectangle = rectangle.resize(size)
+    shadow = shadow.resize((size[0] + 15, size[1]))
+
+    backgound.paste(icon, (40,40), icon)
+    backgound.paste(frame, (0,0), frame)
+    backgound.paste(card2, (240,160), card2)
+    backgound.paste(shadow, (240,160), shadow)
+    backgound.paste(rectangle, (240,160), rectangle)
+
+    largeFont = ImageFont.truetype('Fonts/bahnschrift.ttf', 40)
+    smallFont = ImageFont.truetype('Fonts/bahnschrift.ttf', 20)
+
+    nameplate = ImageDraw.Draw(backgound)
+    xpneeded = ImageDraw.Draw(backgound)
+    level = ImageDraw.Draw(backgound)
+
+    text = f'{char.name}:'
+    subtext = f'Character Level'
+
+    xpneeded.text((920,135), f'{char.xp}/{needed} XP',
+    font=smallFont, align='right', fill=(93,93,93), anchor="ra")
+
+    level.text((960,16), f'Level: #{math.floor(CheckLevel(char.xp))}',
+    font=largeFont, align='right', fill=(255,255,255), anchor="ra")
+
+
+    nameplate.text((240,90), text, font=largeFont, fill=(255,255,255))
+    nameplate.text((240,135), subtext, font=smallFont, fill=(93,93,93))
+#_______________________________________________________________________________
+
+    if len(char.focuses) > 0:
+        offset = 240
+        for f in char.focuses:
+
+            frame = Image.open('Images/focusplate.png')
+
+
+            y = CheckLevel(char.focuses[f], f) + 1
+            if y == 1:
+                needed = 10
+            if y == 2:
+                needed = 40
+            if y >= 3:
+                needed = 130
+            percent = (int(char.focuses[f])/needed) * 100
+
+
+            shadow = Image.open('Images/shadow.png')
+            bar = Image.open('Images/progress.png')
+
+            size = (round(bar.size[0] * percent / 100), bar.size[1])
+
+            if size[0] == 0:
+                size = (1, bar.size[1])
+
+            bar = bar.resize(size)
+            shadow = shadow.resize((size[0] + 15, size[1]))
+
+            backgound.paste(shadow, (20,50 + offset), shadow)
+            backgound.paste(bar, (20,50 + offset), bar)
+            backgound.paste(frame, (0,offset), frame)
+
+
+            xpneeded.text((700, 25 + offset), f'{char.focuses[f]}/{needed} XP',
+            font=smallFont, align='right', fill=(93,93,93), anchor="ra")
+            nameplate.text((20, 5 + offset), f, font=largeFont, fill=(255,255,255))
+            level.text((705, 50 + offset), f" #{math.floor(CheckLevel(char.focuses[f], f))}",
+            font = largeFont, fill=(255,255,255))
+
+
+
+
+
+
+
+
+            offset = offset + 110
+    backgound.save('tmp/card.png')
+
 #Commands_______________________________________________________________________
 #Creates new character
 @client.command(help=helpInfo[0], brief=helpInfo[1])
@@ -267,25 +374,24 @@ async def add(ctx, name=None, xp=None, focus=None):
             if focus in char.focuses:
                 i = int(char.focuses[focus])
                 i += int(xp)
-                char.focuses[focus] = i
+                char.focuses[focus] = int(i)
             else:
-                char.focuses.update({focus:xp})
+                char.focuses.update({focus:int(xp)})
+
+            if char.focuses[focus] == 0:
+                char.focuses.pop(focus)
+
             await ctx.send(f'Added {xp} xp to {focus} in {char.name}.')
 
+        if i < math.floor(CheckLevel(char.xp, focus)):
+            str = ""
+            if focus != None:
+                str = f" in {focus}"
+            await ctx.send(f"{name} just reached level {math.floor(CheckLevel(char.xp, focus))}{str}!")
 
         ExportCharacter(char, ctx.guild)
 
-        if focus == None:
-            x = math.floor(CheckLevel(FindCharacter(name, ctx.guild).xp, focus))
-        else:
-            x = math.floor(CheckLevel(FindCharacter(name, ctx.guild).focuses[focus], focus))
-        if  x != i:
-            if focus != None:
-                await ctx.send(f'{name} just leveled up to level {x} in {focus}!.')
-            else:
-                await ctx.send(f'{name} just leveled up to level {x}!.')
-
- #Set xp to value
+#Set xp to value
 @client.command(help=helpInfo[4], brief=helpInfo[5])
 async def set(ctx, name=None, xp=None, focus=None):
     if await VerifyCommand(ctx, name, xp, focus) == True:
@@ -296,10 +402,12 @@ async def set(ctx, name=None, xp=None, focus=None):
             await ctx.send(f"Set {char.name}'s xp to {xp}.")
         else:
             if focus in char.focuses:
-                char.focuses[focus] = xp
+                char.focuses[focus] = int(xp)
             else:
-                char.focuses.update({focus:xp})
+                char.focuses.update({focus:int(xp)})
 
+        if char.focuses[focus] == 0:
+            char.focuses.pop(focus)
             await ctx.send(f"Set {char.name}'s xp for {focus} to {xp}.")
 
     ExportCharacter(char, ctx.guild)
@@ -324,6 +432,19 @@ async def level(ctx, name=None, focus=None):
     await ctx.send(file = discord.File('tmp/card.png'))
 
 @client.command(help=helpInfo[8], brief=helpInfo[9])
+async def levelall(ctx, name):
+    if name == None:
+        await ctx.send('Please specify a character and/or focus')
+        return
+
+    char = FindCharacter(name, ctx.guild)
+    if char == None:
+        await ctx.send(f"No character by the name of {name} exists!")
+        return
+    CreateAllImage(char)
+    await ctx.send(file = discord.File('tmp/card.png'))
+
+@client.command(help=helpInfo[10], brief=helpInfo[11])
 async def listall(ctx):
     path = Path(f'{ConstructPath(ctx.guild)}')
     files = os.listdir(path)

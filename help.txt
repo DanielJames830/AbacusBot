@@ -5,6 +5,8 @@ Adds xp to the character.
 Sets the xp of a character or focus to amount specified. Leave the focus field blank to add to the overall level.
 Sets amount of xp.
 Prints the current level of the character or focus specified. Leave the focus field blank to print the overall level.
-Displays character levels.
-W
-W
+Displays all levels in character specified.
+Displays all levels in character specified.
+Lists all current characters in the server
+Lists all current characters in the server
+w

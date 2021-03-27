@@ -1,1 +1,1 @@
-{"name": "Carl", "xp": 0, "focuses": {}, "image": null}
+{"name": "Carl", "xp": 200, "focuses": {"Test": 20, "Test2": 10, "Test3": 8}, "image": null}
